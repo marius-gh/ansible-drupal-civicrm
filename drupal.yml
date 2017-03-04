@@ -1,0 +1,20 @@
+---
+- hosts: drupal
+  user: root
+  vars:
+    drupaldbname: drupaldb
+    drupaldbuser: drupaluser
+    drupaldbpass: vEGzqgViK965hmS85uyTt5SiDKd5nMvw
+    drupaladminpass: 3sdx4Wy62HU830Ei7QtfAzkHCYbBSrxK
+    civicrmdbname: civicrmdb
+    civicrmdbuser: civicrmuser
+    civicrmdbpass: q5PyoCC4VXciTlShAdSHb5o0JjjwB6yJ
+    rootdbpass: TR0rFE0W1GrIJvnmeCtStakNoluzb9zn
+    #civicrmext: JwWXp3PJFTMNccSoqBRgoNMVLbPa
+    domain: drupal.example.com
+
+  roles:
+    - essential
+    - database
+    - webserver
+    - backup

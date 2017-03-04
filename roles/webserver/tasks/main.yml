@@ -1,0 +1,161 @@
+---
+- name: Install nginx
+  apt: name=nginx-full state=present
+
+- name: Install PHP module for nginx
+  apt: name={{ item }} update_cache=yes cache_valid_time=3600 state=present
+  with_items:
+  - php5-cli
+  - php5-mysql
+  - php5-fpm
+  - php5-cgi
+  - php5-gd
+  - php5-dev
+  - php-pear
+  - php5-xmlrpc
+  - libssh2-php
+  - php5-ssh2
+  - libpcre3
+  - php5-curl
+
+- name: Add backports repo
+  apt_repository:
+    repo: deb http://ftp.debian.org/debian jessie-backports main
+    state: present
+
+- name: Install Certbot
+  apt: name=certbot default_release=jessie-backports update_cache=yes state=present
+
+- name: Start nginx
+  service: name=nginx state=running enabled=yes
+
+- name: Start php5-fpm
+  service: name=php5-fpm state=running enabled=yes
+
+- name: fix cgi-pathinfo
+  replace: dest=/etc/php5/fpm/php.ini regexp='^;cgi.fix_pathinfo=1' replace='cgi.fix_pathinfo=0'
+
+- name: Set php max mem size
+  replace: dest=/etc/php5/fpm/php.ini regexp='^memory_limit = 128M' replace='memory_limit = 512M'
+
+- name: Set php max mem size
+  replace: dest=/etc/php5/fpm/php.ini regexp='^allow_url_fopen = On' replace='allow_url_fopen = Off'
+
+- name: Restart php5-fpm service
+  service: name=php5-fpm state=restarted
+
+- name: copy ngnix vhost template
+  copy: src=drupal.conf dest=/etc/nginx/sites-available/{{ domain }} owner=www-data group=www-data mode=644
+
+- name: copy ngnix.conf
+  copy: src=nginx.conf dest=/etc/nginx/nginx.conf mode=644
+
+- name: copy ngnix vhost include.template
+  copy: src=drupal.include dest=/etc/nginx/sites-available/drupal.include owner=www-data group=www-data mode=644
+
+- name: copy dhparams.pem
+  copy: src=dhparam.pem dest=/etc/nginx/dhparam.pem mode=644
+
+- name: copy ca-certs.pem
+  copy: src=ca-certs.pem dest=/etc/nginx/ca-certs.pem mode=644
+
+- name: fix domain
+  replace: dest=/etc/nginx/sites-available/{{ domain }} regexp='server_name mysite;' replace='server_name {{ domain }} www.{{ domain }};'
+
+- name: fix domain www root path
+  replace: dest=/etc/nginx/sites-available/{{ domain }} regexp='root /var/www/drupal/;' replace='root /var/www/{{ domain }}/;'
+
+- name: enable {{ domain }} vhost
+  shell: cd /etc/nginx/sites-enabled; ln -s ../sites-available/{{ domain }}
+  args:
+    creates: /etc/nginx/sites-enabled/{{ domain }}
+
+- name: remove default nginx vhost
+  shell: rm /etc/nginx/sites-enabled/default
+  args:
+    removes: /etc/nginx/sites-enabled/default
+
+- name: download drupal core
+  get_url: url=http://ftp.drupal.org/files/projects/drupal-7.54.tar.gz dest=/var/www/drupal-7.54.tar.gz
+
+- name: extract drupal core to /var/www root
+  shell: tar -xzf /var/www/drupal-7.54.tar.gz -C /var/www/
+
+- name: remove old site /var/www/{{ domain }}
+  shell: rm -rf /var/www/{{ domain }}
+
+- name: move drupal core to site /var/www/{{ domain }}
+  shell: mv /var/www/drupal-7.54 /var/www/{{ domain }}
+
+- name: rm /var/www/drupal-7.54.tar.gz
+  shell: rm -rf /var/www/drupal-7.54.tar.gz
+
+- name: fix drupal permissions
+  shell: chown www-data.www-data /var/www/{{ domain }} -R
+
+- name: fix drupal permissions
+  shell: chmod -R 640 /var/www/{{ domain }}
+
+- name: fix drupal permissions
+  shell: find /var/www/{{ domain }} -type d -exec chmod 750 {} \;
+
+- name: install drupal
+  shell: cd /var/www/{{ domain }}; drush si standard --db-url=mysql://{{ drupaldbuser }}:{{ drupaldbpass }}@localhost:3306/{{ drupaldbname }} --account-name=admin --account-pass={{ drupaladminpass }} --site-name="{{ domain }}" -y
+
+- name: fix drupal permissions
+  shell: chown www-data.www-data /var/www/{{ domain }} -R
+
+- name: fix drupal permissions
+  shell: chmod -R 640 /var/www/{{ domain }}
+
+- name: fix drupal permissions
+  shell: find /var/www/{{ domain }} -type d -exec chmod 750 {} \;
+
+- name: crate private folder
+  file: path=/var/www/{{ domain }}/sites/default/files/private group=www-data owner=www-data mode=0750 state=directory
+#  shell: mkdir /var/www/{{ domain }}/sites/default/files/private
+
+#- name: fix permissions on private folder
+#  shell: chown www-data.www-data /var/www/{{ domain }}/sites/default/files/private
+
+- name: configure drupal private files directory
+  shell: cd /var/www/{{ domain }}; drush vset file_private_path sites/default/files/private
+
+- name: download civicrm
+  get_url: url='https://download.civicrm.org/civicrm-4.7.16-drupal.tar.gz?src=donate' dest=/var/www/{{ domain }}/sites/all/modules/civicrm-4.7.16-drupal.tar.gz
+
+- name: extract civicrm to /var/www/{{ domain }}/sites/all/modules/
+  shell: tar -xzf /var/www/{{ domain }}/sites/all/modules/civicrm-4.7.16-drupal.tar.gz -C /var/www/{{ domain }}/sites/all/modules/
+
+- name: fix drupal permissions
+  shell: chown www-data.www-data /var/www/{{ domain }} -R
+
+- name: fix drupal permissions
+  shell: chmod -R 640 /var/www/{{ domain }}
+
+- name: fix drupal permissions
+  shell: find /var/www/{{ domain }} -type d -exec chmod 750 {} \;
+
+- name: restart nginx service
+  service: name=nginx state=restarted
+
+- name: install civicrm
+  shell: curl --data "go=Installing+CiviCRM...&seedLanguage=en_US&database=MySQLDatabase&mysql%5Bserver%5D=localhost&mysql%5Busername%5D={{ civicrmdbuser }}&mysql%5Bpassword%5D={{ civicrmdbpass }}&mysql%5Bdatabase%5D={{ civicrmdbname }}&drupal%5Bserver%5D=localhost&drupal%5Busername%5D={{ drupaldbuser }}&drupal%5Bpassword%5D={{ drupaldbpass }}&drupal%5Bdatabase%5D={{ drupaldbname }}" http://{{ domain }}/sites/all/modules/civicrm/install/index.php
+
+- name: restart nginx service
+  service: name=nginx state=restarted
+
+- name: Add certificate
+  shell: certbot certonly --webroot -w /var/www/{{ domain }} -d {{ domain }} --register-unsafely-without-email --agree-tos --non-interactive #--staging
+
+- name: fix domain in nginx.conf
+  replace: dest=/etc/nginx/sites-available/{{ domain }} regexp='#ssl_certificate /etc/letsencrypt/live/mysite/cert.pem;' replace='ssl_certificate /etc/letsencrypt/live/{{ domain }}/cert.pem;'
+
+- name: fix domain in nginx.conf
+  replace: dest=/etc/nginx/sites-available/{{ domain }} regexp='#ssl_certificate_key /etc/letsencrypt/live/mysite/privkey.pem;' replace='ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;'
+
+- name: Add cron job for letsencrypt
+  cron: name="letsencrypt" minute="0" hour="23" day="1" job="certbot renew --agree-tos --non-interactive"
+
+- name: restart nginx service
+  service: name=nginx state=restarted
