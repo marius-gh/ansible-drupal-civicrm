@@ -21,4 +21,5 @@ edit passwords and domain inside drupal.yml
 ```bash
 ansible-playbook drupal.yml
 ```
-- **Confiure S3 backup and migrate module inside drupal**
+Confiure S3 backup and migrate module inside drupal and name it s3backup because a cron job will use than name
+
