@@ -8,17 +8,17 @@
 - name: start mysql service
   service: name=mysql state=started enabled=true
 
-#- name: create a database superuser aka root
-#  mysql_user: name=root password={{ rootdbpass }} priv=*.*:ALL host=localhost state=present
+- name: create a database superuser aka root
+  mysql_user: name=root password={{ rootdbpass }} priv=*.*:ALL host=localhost state=present login_user=root login_password={{ rootdbpass }} check_implicit_admin=yes
 
 - name: create a new drupal database
-  mysql_db: name={{ drupaldbname }} state=present collation=utf8_general_ci  #login_user=root login_password={{ rootdbpass }}
+  mysql_db: name={{ drupaldbname }} state=present collation=utf8_general_ci  login_user=root login_password={{ rootdbpass }}
 
 - name: create a new drupal database
-  mysql_db: name={{ civicrmdbname }} state=present collation=utf8_general_ci  #login_user=root login_password={{ rootdbpass }}
+  mysql_db: name={{ civicrmdbname }} state=present collation=utf8_general_ci  login_user=root login_password={{ rootdbpass }}
 
 - name: create drupal database and user
-  mysql_user: name={{ drupaldbuser }} password={{ drupaldbpass }} priv='{{ drupaldbname }}.*:ALL' host=localhost state=present #login_user=root login_password={{ rootdbpass }}
+  mysql_user: name={{ drupaldbuser }} password={{ drupaldbpass }} priv='{{ drupaldbname }}.*:ALL' host=localhost state=present login_user=root login_password={{ rootdbpass }} check_implicit_admin=yes
 
 - name: create drupal database and user
-  mysql_user: name={{ civicrmdbuser }} password={{ civicrmdbpass }} priv='{{ civicrmdbname }}.*:ALL' host=localhost state=present #login_user=root login_password={{ rootdbpass }}
+  mysql_user: name={{ civicrmdbuser }} password={{ civicrmdbpass }} priv='{{ civicrmdbname }}.*:ALL' host=localhost state=present login_user=root login_password={{ rootdbpass }} check_implicit_admin=yes
